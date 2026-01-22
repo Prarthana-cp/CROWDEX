@@ -115,49 +115,31 @@
     </div>
 
     <script>
-        async function processSearch() {
-            const val = document.getElementById('venueSearch').value;
-            const API_KEY = 'Pri_e18f9b3f2b0041cdba8b25b6cddd3c3a'; 
-            
-            if(!val) return;
+        async function getCrowdData() {
+    const venue = document.getElementById('search-input').value;
+    const apiKey = 'pri_77c006847a96499899321e3519349890'; // Your Private Key
+    
+    // We use a proxy to stop the browser from blocking the data
+    const proxy = "https://corsproxy.io/?"; 
+    const targetUrl = `https://besttime.app/api/v1/forecasts/live?api_key=${apiKey}&venue_name=${venue}`;
 
-            // Switch UI
-            document.getElementById('p1').classList.remove('active');
-            document.getElementById('p2').classList.add('active');
-            document.getElementById('labelDisplay').innerText = val;
+    try {
+        const response = await fetch(proxy + encodeURIComponent(targetUrl));
+        const data = await response.json();
 
-            // 1. UPDATE MAP (Direct Google Link)
-            const query = encodeURIComponent(val);
-            document.getElementById('googleMap').src = `https://maps.google.com/maps?q=${query}&output=embed&z=17&iwloc=near`;
+        if (data.status === 'OK' && data.analysis) {
+            const realDensity = data.analysis.venue_live_busyness;
+            // SUCCESS: This replaces the 35% with the REAL number
+            document.getElementById('density-value').innerText = realDensity + "%";
+            document.getElementById('status-text').innerText = realDensity > 50 ? "Crowded" : "Safe to visit";
+        } else {
+            alert("Location not found. Try adding the city name!");
+        }
+    } catch (error) {
+        alert("Connection Error. Check your internet or API limit.");
+    }
+}
 
-            // 2. FETCH ACCURATE DATA (With Security Bridge)
-            const bestTimeUrl = `https://besttime.app/api/v1/forecasts/now?api_key=${API_KEY}&venue_name=${query}&venue_address=${query}`;
-            const bridgeProxy = 'https://api.allorigins.win/get?url=';
-
-            try {
-                const response = await fetch(bridgeProxy + encodeURIComponent(bestTimeUrl));
-                const json = await response.json();
-                
-                // AllOrigins returns the data as a string in 'contents'
-                const data = JSON.parse(json.contents);
-                
-                if(data.status === "OK" && data.analysis) {
-                    document.getElementById('scoreDisplay').innerText = data.analysis.busyness_score + "%";
-                    document.getElementById('statusDisplay').innerText = data.analysis.busyness_text;
-                } else {
-                    throw new Error("No Data");
-                }
-            } catch (err) {
-                // FALLBACK: If API fails/blocks, show Time-Based Realistic Estimate
-                const hour = new Date().getHours();
-                const isPeak = (hour >= 12 && hour <= 14) || (hour >= 19 && hour <= 21);
-                const baseScore = isPeak ? 74 : 28;
-                const finalScore = baseScore + Math.floor(Math.random() * 10);
-                
-                document.getElementById('scoreDisplay').innerText = finalScore + "%";
-                document.getElementById('statusDisplay').innerText = finalScore > 50 ? "Heavy Traffic" : "Steady Flow";
-                console.log("Using Smart Fallback due to Security Restrictions.");
-            }
         }
     </script>
 </body>
